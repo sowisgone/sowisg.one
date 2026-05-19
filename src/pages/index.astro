@@ -1,0 +1,108 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ProfileCard from '../components/ProfileCard.astro';
+import ProfileShPanel from '../components/ProfileShPanel.astro';
+import AboutPanel from '../components/AboutPanel.astro';
+import MapPanel from '../components/MapPanel.astro';
+import SteamGamesPanel from '../components/SteamGamesPanel.astro';
+import { fetchLanyardPresence } from '../lib/discord';
+import { fetchSteamGames } from '../lib/steam';
+
+const discordUserId = import.meta.env.DISCORD_USER_ID;
+const steamApiKey = import.meta.env.STEAM_API_KEY;
+const steamId = import.meta.env.STEAM_ID;
+
+let presence = null;
+let discordError: string | null = null;
+
+if (!discordUserId) {
+    discordError = 'DISCORD_USER_ID not set in .env';
+} else {
+    try {
+        presence = await fetchLanyardPresence(discordUserId);
+    } catch (err) {
+        discordError = err instanceof Error ? err.message : 'failed to load discord profile.';
+    }
+}
+
+let steamGames = [];
+let steamError: string | null = null;
+
+if (!steamApiKey || !steamId) {
+    steamError = 'STEAM_API_KEY / STEAM_ID not set in .env';
+} else {
+    try {
+        steamGames = await fetchSteamGames();
+        if (!steamGames.length) steamError = 'no games with achievements found.';
+    } catch (err) {
+        steamError = err instanceof Error ? err.message : 'failed to load steam stats.';
+    }
+}
+---
+
+<Layout>
+    <div class="container grid">
+        <div class="left-col">
+            <ProfileCard
+                discordUserId={discordUserId ?? ''}
+                presence={presence}
+                error={discordError}
+            />
+            <ProfileShPanel />
+        </div>
+
+        <div class="right-top">
+            <AboutPanel />
+            <MapPanel />
+        </div>
+
+        <SteamGamesPanel games={steamGames} error={steamError} />
+    </div>
+</Layout>
+
+<script>
+  // Adjusted path based on where it resolved for your blog index sub-folder
+  // If it fails to play on the home page, change this to: 'blog/audio/mouse.mp3' or '/audio/mouse.mp3'
+  const clickSound = new Audio('audio/mouse.mp3');
+
+  function playClickSound() {
+    try {
+      clickSound.currentTime = 0; 
+      clickSound.play();
+    } catch (e) {
+      // Fallback silently if audio playback is blocked by browser policies
+    }
+  }
+
+  // 1. Attach click listeners to all window dots
+  document.querySelectorAll('.dots span').forEach(dot => {
+    dot.addEventListener('click', (e) => {
+      // If it's a dot that navigates, it's handled here or inside the components.
+      // We just want to make sure it plays the click sound regardless!
+      playClickSound();
+    });
+  });
+
+  // 2. Attach click listeners to all hyperlinks
+  document.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', (e) => {
+      const target = link.getAttribute('target');
+      const href = link.getAttribute('href');
+
+      // If the link opens in a new tab, just play the sound normally
+      if (target === '_blank' || !href || href.startsWith('#')) {
+        playClickSound();
+        return;
+      }
+
+      // If navigating in the same tab, stop the instant navigation,
+      // play the click, and redirect after 100ms so the audio can cut through
+      e.preventDefault();
+      playClickSound();
+
+      setTimeout(() => {
+        window.location.href = href;
+      }, 100);
+    });
+  });
+</script>

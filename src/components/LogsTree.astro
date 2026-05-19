@@ -1,0 +1,125 @@
+---
+interface DayEntry {
+  title: string;
+  tags: string[];
+  content: string;
+}
+
+interface LogTree {
+  [year: string]: {
+    [month: string]: {
+      [day: string]: DayEntry;
+    };
+  };
+}
+
+interface Props {
+  logs: LogTree;
+}
+
+const { logs } = Astro.props;
+
+const years = Object.keys(logs).sort((a, b) => Number(b) - Number(a));
+---
+
+<div class="tree-container" id="tree-root">
+  {years.map((year, yi) => (
+    <div class="folder-wrapper">
+      <div class="tree-item" data-folder data-key={`year-${year}`}>
+        <span class="arrow">v</span>
+        <span>{year}/</span>
+      </div>
+      <div class={`tree-children ${yi === 0 ? 'open' : ''}`} id={`year-${year}`}>
+        {Object.keys(logs[year])
+          .sort((a, b) => (a > b ? -1 : 1))
+          .map(month => (
+            <div class="folder-wrapper">
+              <div class="tree-item" data-folder data-key={`month-${year}-${month}`}>
+                <span class="arrow">v</span>
+                <span>{month}/</span>
+              </div>
+              <div class="tree-children" id={`month-${year}-${month}`}>
+                {Object.keys(logs[year][month])
+                  .sort((a, b) => (a > b ? -1 : 1))
+                  .map(day => (
+                    <div
+                      class="day-item"
+                      data-year={year}
+                      data-month={month}
+                      data-day={day}
+                    >
+                      {day}.log
+                    </div>
+                  ))}
+              </div>
+            </div>
+          ))}
+      </div>
+    </div>
+  ))}
+</div>
+
+<style>
+  .tree-container {
+    user-select: none;
+  }
+
+  .folder-wrapper {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .tree-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 0;
+    cursor: pointer;
+    color: var(--white);
+    font-size: 13px;
+    transition: color 0.12s;
+  }
+
+  .tree-item:hover {
+    color: var(--green);
+  }
+
+  .tree-item .arrow {
+    color: var(--pink);
+    font-size: 11px;
+    width: 8px;
+    display: inline-block;
+    font-family: monospace;
+    transition: transform 0.12s;
+  }
+
+
+  .tree-children {
+    display: none;
+    margin-left: 2px;
+    border-left: 1px solid #1a1a1a;
+    padding-left: 14px;
+  }
+
+  .tree-children.open {
+    display: block;
+  }
+
+  .day-item {
+    display: flex;
+    align-items: center;
+    padding: 3px 0;
+    cursor: pointer;
+    color: #999;
+    font-size: 12px;
+    transition: color 0.12s;
+  }
+
+  .day-item:hover {
+    color: var(--green);
+  }
+
+  .day-item.selected {
+    color: var(--pink);
+  }
+</style>

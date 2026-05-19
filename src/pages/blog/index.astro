@@ -1,0 +1,179 @@
+---
+// src/pages/blog/index.astro
+// Reads all log entries from src/content/logs/**/*.html at build-time.
+// File naming convention: mMMdDDhHHMM.html  (e.g. m05d19h1200.html)
+// Folder structure:       src/content/logs/YYYY/MM/<slug>.html
+
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import Layout from '../../layouts/Layout.astro';
+import Panel from '../../components/Panel.astro';
+import LogsTree from '../../components/LogsTree.astro';
+import LogViewer from '../../components/LogViewer.astro';
+import { cleanNotionHtml } from '../../scripts/cleanNotionHtml';
+
+const LOGS_DIR = join(process.cwd(), 'src/content/logs');
+
+type DayEntry = { title: string; tags: string[]; content: string };
+type LogTree  = Record<string, Record<string, Record<string, DayEntry>>>;
+
+function buildLogsTree(): LogTree {
+  const tree: LogTree = {};
+  try {
+    const years = readdirSync(LOGS_DIR).filter(y =>
+      statSync(join(LOGS_DIR, y)).isDirectory()
+    );
+    for (const year of years) {
+      tree[year] = {};
+      const months = readdirSync(join(LOGS_DIR, year)).filter(m =>
+        statSync(join(LOGS_DIR, year, m)).isDirectory()
+      );
+      for (const month of months) {
+        tree[year][month] = {};
+        const files = readdirSync(join(LOGS_DIR, year, month)).filter(f =>
+          f.endsWith('.html')
+        );
+        for (const file of files) {
+          const slug = file.replace('.html', '');
+          const raw  = readFileSync(join(LOGS_DIR, year, month, file), 'utf-8');
+          tree[year][month][slug] = cleanNotionHtml(raw);
+        }
+      }
+    }
+  } catch {
+    // logs directory doesn't exist yet — return empty tree
+  }
+  return tree;
+}
+
+const logsTree = buildLogsTree();
+const logsJson = JSON.stringify(logsTree);
+---
+
+<Layout title="sowisg.one — logs">
+  <div class="blog-grid">
+
+    <Panel title="dates.json">
+      <LogsTree logs={logsTree} />
+    </Panel>
+
+    <Panel title="day.log">
+      <LogViewer />
+    </Panel>
+
+  </div>
+</Layout>
+
+<!-- Pass the full log data to the client-side interaction layer -->
+<script define:vars={{ logsJson }}>
+  const logs = JSON.parse(logsJson);
+
+  // ── audio ─────────────────────────────────────────────────
+  const clickSound = new Audio('../audio/mouse.mp3');
+  function playClick() {
+    try { clickSound.currentTime = 0; clickSound.play(); } catch {}
+  }
+
+  // ── dot navigation (back to home) ─────────────────────────
+  document.querySelectorAll('.dots span').forEach(dot => {
+    dot.addEventListener('click', e => {
+      e.stopPropagation();
+      playClick();
+      if (dot.classList.contains('d1') || dot.classList.contains('d3')) {
+        setTimeout(() => { window.location.href = '../'; }, 100);
+      }
+    });
+  });
+
+  // ── folder toggle ─────────────────────────────────────────
+  function toggleFolder(folderEl, childrenEl) {
+    const isOpen = childrenEl.classList.toggle('open');
+    folderEl.classList.toggle('open', isOpen);
+    const arrow = folderEl.querySelector('.arrow');
+    if (arrow) arrow.textContent = isOpen ? 'v' : '>';
+  }
+
+  document.querySelectorAll('[data-folder]').forEach(folder => {
+    folder.addEventListener('click', e => {
+      e.stopPropagation();
+      playClick();
+      const key = folder.getAttribute('data-key');
+      const children = document.getElementById(key);
+      if (children) toggleFolder(folder, children);
+    });
+  });
+
+  // seed open-state arrows for any pre-opened folders
+  document.querySelectorAll('.tree-children.open').forEach(openChildren => {
+    const folder = openChildren.previousElementSibling;
+    if (folder) {
+      folder.classList.add('open');
+      const arrow = folder.querySelector('.arrow');
+      if (arrow) arrow.textContent = 'v';
+    }
+  });
+
+  // ── log viewer ────────────────────────────────────────────
+  function openLog(year, month, day, dayEl) {
+    document.querySelectorAll('.day-item').forEach(d => d.classList.remove('selected'));
+    dayEl.classList.add('selected');
+
+    const entry = logs[year][month][day];
+    document.getElementById('log-cmd').textContent =
+      `./logs/${year}/${month}/${day}.log`;
+
+    const tagsHtml = (entry.tags?.length)
+      ? `<p style="margin-top:12px">${entry.tags.map(t => `<span class="tag">#${t}</span>`).join('')}</p>`
+      : '';
+
+    document.getElementById('log-viewer').innerHTML =
+      `<div class="log-content">${entry.content}${tagsHtml}</div>`;
+  }
+
+  document.querySelectorAll('.day-item').forEach(dayEl => {
+    dayEl.addEventListener('click', e => {
+      e.stopPropagation();
+      playClick();
+      openLog(dayEl.dataset.year, dayEl.dataset.month, dayEl.dataset.day, dayEl);
+    });
+  });
+</script>
+
+<style>
+  .blog-grid {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 14.4px;
+    max-width: 990px;
+    margin: 0 auto;
+    height: calc(100vh - 43.2px);
+  }
+
+  /* Panels fill height and scroll internally */
+  .blog-grid :global(.panel) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .blog-grid :global(.panel-body) {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dim-green) #111;
+  }
+
+  .blog-grid :global(.panel-body::-webkit-scrollbar)            { width: 4px; }
+  .blog-grid :global(.panel-body::-webkit-scrollbar-track)       { background: #0a0a0a; }
+  .blog-grid :global(.panel-body::-webkit-scrollbar-thumb)       { background: #222; }
+  .blog-grid :global(.panel-body::-webkit-scrollbar-thumb:hover) { background: var(--dim-green); }
+
+  @media (max-width: 700px) {
+    .blog-grid {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
+    .blog-grid :global(.panel)            { height: 300px; }
+    .blog-grid :global(.panel:last-child) { height: auto; min-height: 400px; }
+  }
+</style>

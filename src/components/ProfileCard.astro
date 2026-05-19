@@ -1,0 +1,71 @@
+---
+import Panel from './Panel.astro';
+import {
+	getAvatarUrl,
+	statusColors,
+	type LanyardPresence,
+} from '../lib/discord';
+
+interface Props {
+	discordUserId: string;
+	presence: LanyardPresence | null;
+	error?: string | null;
+}
+
+const { discordUserId, presence, error = null } = Astro.props;
+
+const statusColor = presence
+	? statusColors[presence.discord_status]
+	: statusColors.offline;
+const avatarUrl = presence ? getAvatarUrl(presence.discord_user) : null;
+---
+
+<Panel title="image.png">
+	<div class="profile-card-inner">
+		<div class="pfp-wrapper" id="profile-card" data-discord-id={discordUserId}>
+			{
+				error ? (
+					<p class="error-line">{error}</p>
+				) : (
+					<>
+						<canvas id="ascii-canvas"></canvas>
+						<div id="status-dot" class="status-dot" style={`background: ${statusColor}`} />
+						<img
+							id="pfp-src"
+							crossorigin="anonymous"
+							src={avatarUrl ?? undefined}
+							alt=""
+							width="256"
+							height="256"
+							hidden
+						/>
+					</>
+				)
+			}
+		</div>
+		<div class="profile-footer">
+			<div class="discord-info">
+				<span id="discord-username" class="discord-name">@sowisgone</span>
+				<div class="discord-sub">on Discord</div>
+			</div>
+			<span class="discord-divider">|</span>
+			<span class="activity-block">
+				<span id="activity-label" class="activity-label">idling<span class="dots-anim"></span></span>
+				<span id="spotify-marquee" class="spotify-marquee" style="display:none">
+					<span id="spotify-text"></span>
+				</span>
+			</span>
+		</div>
+	</div>
+</Panel>
+
+<script>
+	import { initLanyard } from '../scripts/lanyard-client';
+	import { initPfpCanvas } from '../scripts/pfp-canvas';
+
+	initPfpCanvas();
+
+	const root = document.getElementById('profile-card');
+	const id = root?.dataset.discordId;
+	if (id) initLanyard(id);
+</script>

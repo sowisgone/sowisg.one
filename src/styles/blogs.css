@@ -1,0 +1,10 @@
+/* ── blog-specific overrides ─────────────────────────────────────────────
+   Global tokens, panel chrome, and scrollbar rules live in global.css.
+   Only blog-specific additions belong here.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* The blog layout keeps panels full-height; body doesn't need to center */
+body:has(.blog-grid) {
+  display: block;
+  padding: 21.6px;
+}
