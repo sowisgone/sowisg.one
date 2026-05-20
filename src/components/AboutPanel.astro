@@ -1,7 +1,7 @@
 ---
 import Panel from './Panel.astro';
 import TerminalPrompt from './TerminalPrompt.astro';
-import { about, posts } from '../data/site';
+import { about, posts} from '../data/site';
 ---
 
 <Panel title="about.sh">
@@ -19,6 +19,7 @@ import { about, posts } from '../data/site';
 	<TerminalPrompt command="./posts.eml" />
 	<ul class="plain">
 		{posts.map((post) => (
+			<p class="about-val">{about.postsDescription}</p>
 			<li>
 				<a href={post.href}>{post.label}</a>
 			</li>

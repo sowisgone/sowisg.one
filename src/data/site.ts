@@ -13,6 +13,7 @@ export const about = {
 	age: '18y',
 	location: 'Brazil',
 	email: 'sowisgone@gmail.com',
+	postsDescription: 'Currently I\'m making some posts on this page of my website, like a "blog" of sorts. Check it out down below if you wanna see me freaking out on some stuff lol',
 	description: 'Been making small projects since 2019, participating in many projects. I\'ve worked as a scriptwritter and RPG master for a decade now. Currently, my main focus is working on my future game, SKULLDYE, and doing some stuff in Minecraft. Feel welcome to email me or send me a message on Discord asking anything. If the topic comes to be collabing on a project, send me an email on it!'
 };
 

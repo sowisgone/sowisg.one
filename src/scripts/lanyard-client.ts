@@ -39,7 +39,7 @@ function applyPresence(presence: LanyardPresence) {
   // 1. Twitch stream (activity type 1)
   const streamActivity = (presence as any).activities?.find((a: any) => a.type === 1);
   if (streamActivity) {
-    activityLabel.innerHTML = 'live on <span class="activity-verb">twitch</span>';
+    activityLabel.innerHTML = 'live on <span class="activity-verb">Twitch</span>';
     if (spotifyMarquee) spotifyMarquee.style.display = 'none';
     return;
   }
