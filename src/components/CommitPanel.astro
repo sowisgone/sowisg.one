@@ -1,0 +1,153 @@
+---
+// src/components/CommitPanel.astro
+// Replaces MapPanel. Fetches recent commits from your public GitHub repo
+// and renders them as a terminal-style feed.
+//
+// Requires in .env:
+//   PUBLIC_GITHUB_TOKEN=ghp_xxxxxxxxxxxx
+//   PUBLIC_GITHUB_REPO=owner/repo          (e.g. sowisgone/sow.bio)
+//
+// Uses PUBLIC_ prefix so Astro exposes it to the build — no server needed.
+
+import Panel from './Panel.astro';
+
+const token  = import.meta.env.PUBLIC_GITHUB_TOKEN;
+const repo   = import.meta.env.PUBLIC_GITHUB_REPO;
+
+type Commit = {
+  sha: string;
+  message: string;
+  date: string;
+  url: string;
+  branch?: string;
+};
+
+let commits: Commit[] = [];
+let error: string | null = null;
+
+if (!token || !repo) {
+  error = 'PUBLIC_GITHUB_TOKEN / PUBLIC_GITHUB_REPO not set in .env';
+} else {
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${repo}/commits?per_page=20`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      }
+    );
+
+    if (!res.ok) throw new Error(`GitHub API: ${res.status}`);
+    const data = await res.json();
+
+    commits = data.map((c: any) => ({
+      sha:     c.sha.slice(0, 7),
+      message: c.commit.message.split('\n')[0], // first line only
+      date:    c.commit.author.date,
+      url:     c.html_url,
+    }));
+  } catch (err) {
+    error = err instanceof Error ? err.message : 'failed to load commits';
+  }
+}
+
+function timeAgo(iso: string): string {
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diff < 60)          return `${diff}s ago`;
+  if (diff < 3600)        return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400)       return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 86400 * 30)  return `${Math.floor(diff / 86400)}d ago`;
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+---
+
+<Panel title="git.log">
+  <div class="commit-feed">
+    {error && (
+      <div class="commit-error">{error}</div>
+    )}
+
+    {!error && commits.length === 0 && (
+      <div class="commit-error">no commits found</div>
+    )}
+
+    {commits.map((c) => (
+      <a class="commit-row" href={c.url} target="_blank" rel="noopener">
+        <span class="commit-sha">{c.sha}</span>
+        <span class="commit-msg">{c.message}</span>
+        <span class="commit-time">{timeAgo(c.date)}</span>
+      </a>
+    ))}
+  </div>
+</Panel>
+
+<style>
+  .commit-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-height: 260px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #222 transparent;
+  }
+
+  .commit-feed::-webkit-scrollbar { width: 3px; }
+  .commit-feed::-webkit-scrollbar-thumb { background: #222; }
+
+  .commit-row {
+    display: grid;
+    grid-template-columns: 52px 1fr auto;
+    align-items: baseline;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid #111;
+    text-decoration: none;
+    transition: background 0.1s;
+    cursor: pointer;
+  }
+
+  .commit-row:last-child { border-bottom: none; }
+
+  .commit-row:hover {
+    background: rgba(208, 20, 255, 0.06);
+    margin: 0 -12.6px;
+    padding-left: 12.6px;
+    padding-right: 12.6px;
+  }
+
+  .commit-sha {
+    font-family: 'VT323', monospace;
+    font-size: 14px;
+    color: var(--green);
+    letter-spacing: 1px;
+    flex-shrink: 0;
+  }
+
+  .commit-msg {
+    font-size: 11px;
+    color: var(--white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.75;
+  }
+
+  .commit-row:hover .commit-msg { opacity: 1; }
+
+  .commit-time {
+    font-size: 10px;
+    color: var(--grey);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .commit-error {
+    font-size: 11px;
+    color: #fa746c;
+    padding: 8px 0;
+  }
+</style>

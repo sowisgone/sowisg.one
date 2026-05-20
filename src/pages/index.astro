@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import ProfileCard from '../components/ProfileCard.astro';
 import ProfileShPanel from '../components/ProfileShPanel.astro';
 import AboutPanel from '../components/AboutPanel.astro';
-import MapPanel from '../components/MapPanel.astro';
+import CommitPanel from '../components/CommitPanel.astro';
 import SteamGamesPanel from '../components/SteamGamesPanel.astro';
 import { fetchLanyardPresence } from '../lib/discord';
 import { fetchSteamGames } from '../lib/steam';
@@ -53,7 +53,7 @@ if (!steamApiKey || !steamId) {
 
         <div class="right-top">
             <AboutPanel />
-            <MapPanel />
+            <CommitPanel />
         </div>
 
         <SteamGamesPanel games={steamGames} error={steamError} />
