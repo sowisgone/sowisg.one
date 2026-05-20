@@ -5,11 +5,16 @@ import { about, posts } from '../data/site';
 ---
 
 <Panel title="about.sh">
-	<TerminalPrompt command="./aboutme.txt" />
+	<TerminalPrompt command="./basics.txt" />
 	<p class="about-val">
 		{about.age} | {about.location}
 		<br />
 		<a href={`mailto:${about.email}`}>{about.email}</a>
+	</p>
+	<TerminalPrompt command="./aboutme.txt" />
+	<p class="about-val">
+		{about.description}
+		
 	</p>
 	<TerminalPrompt command="./posts.eml" />
 	<ul class="plain">
