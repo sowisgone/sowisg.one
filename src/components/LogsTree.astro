@@ -1,125 +1,84 @@
 ---
-interface DayEntry {
-  title: string;
-  tags: string[];
-  content: string;
-}
+// src/components/LogsTree.astro
+const { logs, pathPrefix = "" } = Astro.props;
 
-interface LogTree {
-  [year: string]: {
-    [month: string]: {
-      [day: string]: DayEntry;
-    };
-  };
-}
-
-interface Props {
-  logs: LogTree;
-}
-
-const { logs } = Astro.props;
-
-const years = Object.keys(logs).sort((a, b) => Number(b) - Number(a));
+// Sort arrays alphanumeric order helper
+const folderKeys = Object.keys(logs?.folders || {}).sort((a, b) =>
+  a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+);
+const fileKeys = Object.keys(logs?.files || {}).sort((a, b) =>
+  a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+);
 ---
 
-<div class="tree-container" id="tree-root">
-  {years.map((year, yi) => (
-    <div class="folder-wrapper">
-      <div class="tree-item" data-folder data-key={`year-${year}`}>
-        <span class="arrow">v</span>
-        <span>{year}/</span>
+<div class="tree-wrapper">
+  {/* Render Files across all branches at any level */}
+  {fileKeys.map((fileSlug) => {
+    const completePathKey = pathPrefix ? `${pathPrefix}/${fileSlug}` : fileSlug;
+    return (
+      <div 
+        class="day-item" 
+        data-pathkey={completePathKey}
+      >
+        {fileSlug}.log
       </div>
-      <div class={`tree-children ${yi === 0 ? 'open' : ''}`} id={`year-${year}`}>
-        {Object.keys(logs[year])
-          .sort((a, b) => (a > b ? -1 : 1))
-          .map(month => (
-            <div class="folder-wrapper">
-              <div class="tree-item" data-folder data-key={`month-${year}-${month}`}>
-                <span class="arrow">v</span>
-                <span>{month}/</span>
-              </div>
-              <div class="tree-children" id={`month-${year}-${month}`}>
-                {Object.keys(logs[year][month])
-                  .sort((a, b) => (a > b ? -1 : 1))
-                  .map(day => (
-                    <div
-                      class="day-item"
-                      data-year={year}
-                      data-month={month}
-                      data-day={day}
-                    >
-                      {day}.log
-                    </div>
-                  ))}
-              </div>
-            </div>
-          ))}
+    );
+  })}
+
+  {/* Render Folders up to 10 levels deep */}
+  {folderKeys.map((folderName) => {
+    const nextPrefix = pathPrefix ? `${pathPrefix}/${folderName}` : folderName;
+    const folderUniqueKey = `folder-${nextPrefix.replace(/\//g, '-')}`;
+    
+    return (
+      <div class="tree-folder-group">
+        <div class="folder-item" data-folder data-key={folderUniqueKey}>
+          <span class="arrow">&gt;</span> {folderName}
+        </div>
+        <div id={folderUniqueKey} class="tree-children">
+          <Astro.self logs={logs.folders[folderName]} pathPrefix={nextPrefix} />
+        </div>
       </div>
-    </div>
-  ))}
+    );
+  })}
 </div>
 
 <style>
-  .tree-container {
+  /* Keeps all original styling rules intact while handling indentations */
+  .tree-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-family: monospace;
     user-select: none;
   }
-
-  .folder-wrapper {
+  .folder-item, .day-item {
+    cursor: pointer;
+    padding: 2px 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .folder-item:hover, .day-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .day-item.selected {
+    color: var(--bright-green, #9c0fc7);
+    background: rgba(247, 0, 255, 0.1);
+  }
+  .tree-children {
+    display: none;
+    padding-left: 14px; /* Creates perfectly structured indentation across nested trees */
+    border-left: 1px dashed #222;
+    margin-left: 9px;
+  }
+  .tree-children.open {
     display: flex;
     flex-direction: column;
   }
-
-  .tree-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 0;
-    cursor: pointer;
-    color: var(--white);
-    font-size: 13px;
-    transition: color 0.12s;
-  }
-
-  .tree-item:hover {
-    color: var(--green);
-  }
-
-  .tree-item .arrow {
-    color: var(--pink);
-    font-size: 11px;
-    width: 8px;
+  .arrow {
+    width: 10px;
     display: inline-block;
-    font-family: monospace;
-    transition: transform 0.12s;
-  }
-
-
-  .tree-children {
-    display: none;
-    margin-left: 2px;
-    border-left: 1px solid #1a1a1a;
-    padding-left: 14px;
-  }
-
-  .tree-children.open {
-    display: block;
-  }
-
-  .day-item {
-    display: flex;
-    align-items: center;
-    padding: 3px 0;
-    cursor: pointer;
-    color: #999;
-    font-size: 12px;
-    transition: color 0.12s;
-  }
-
-  .day-item:hover {
-    color: var(--green);
-  }
-
-  .day-item.selected {
-    color: var(--pink);
+    color: #9c0fc7;
   }
 </style>

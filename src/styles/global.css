@@ -133,7 +133,7 @@ body::before {
     position: absolute;
     bottom: 7.2px;
     right: 7.2px;
-    width: 25.2px; height: 25.2px;
+    width: 12px; height: 12px;
     border-radius: 50%;
     background: var(--status-color);
 }
@@ -347,7 +347,7 @@ li::before { content: '> '; color: var(--green); }
 /* tree */
 .tree-root {
     font-size: 11.7px;
-    max-height: calc(10 * 36px);
+    max-height: calc(6 * 36px);
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--dim-green) #111;

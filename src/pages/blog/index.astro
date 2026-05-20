@@ -1,11 +1,10 @@
 ---
 // src/pages/blog/index.astro
-// Reads all log entries from src/content/logs/**/*.html at build-time.
-// File naming convention: mMMdDDhHHMM.html  (e.g. m05d19h1200.html)
-// Folder structure:       src/content/logs/YYYY/MM/<slug>.html
+// Reads all log entries from src/content/logs up to 10 levels deep.
+// Organizes files/folders by alphanumeric order (0-9 then a-z) across all tree branches.
 
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import Layout from '../../layouts/Layout.astro';
 import Panel from '../../components/Panel.astro';
 import LogsTree from '../../components/LogsTree.astro';
@@ -15,46 +14,61 @@ import { cleanNotionHtml } from '../../scripts/cleanNotionHtml';
 const LOGS_DIR = join(process.cwd(), 'src/content/logs');
 
 type DayEntry = { title: string; tags: string[]; content: string };
-type LogTree  = Record<string, Record<string, Record<string, DayEntry>>>;
 
-function buildLogsTree(): LogTree {
-  const tree: LogTree = {};
-  try {
-    const years = readdirSync(LOGS_DIR).filter(y =>
-      statSync(join(LOGS_DIR, y)).isDirectory()
-    );
-    for (const year of years) {
-      tree[year] = {};
-      const months = readdirSync(join(LOGS_DIR, year)).filter(m =>
-        statSync(join(LOGS_DIR, year, m)).isDirectory()
-      );
-      for (const month of months) {
-        tree[year][month] = {};
-        const files = readdirSync(join(LOGS_DIR, year, month)).filter(f =>
-          f.endsWith('.html')
-        );
-        for (const file of files) {
-          const slug = file.replace('.html', '');
-          const raw  = readFileSync(join(LOGS_DIR, year, month, file), 'utf-8');
-          tree[year][month][slug] = cleanNotionHtml(raw);
-        }
-      }
-    }
-  } catch {
-    // logs directory doesn't exist yet — return empty tree
-  }
-  return tree;
+// Custom alphanumeric sort matching your precise sequence requirements (0-9 before a-z)
+function alphanumericSort(a: string, b: string): number {
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 }
 
-const logsTree = buildLogsTree();
-const logsJson = JSON.stringify(logsTree);
+// 1. Build a flattened object database so the client-side log-viewer click script still finds files instantly
+const logsFlatMap: Record<string, DayEntry> = {};
+
+function buildLogsTreeData(dirPath: string, currentDepth: number = 1): any {
+  if (currentDepth > 10 || !existsSync(dirPath)) return null;
+
+  const currentLevelItems: any = { folders: {}, files: {} };
+  const items = readdirSync(dirPath).sort(alphanumericSort);
+
+  for (const item of items) {
+    if (item.startsWith('.')) continue;
+
+    const fullPath = join(dirPath, item);
+    const stat = statSync(fullPath);
+
+    if (stat.isDirectory()) {
+      const subdirectoryData = buildLogsTreeData(fullPath, currentDepth + 1);
+      if (subdirectoryData) {
+        currentLevelItems.folders[item] = subdirectoryData;
+      }
+    } else if (item.endsWith('.html')) {
+      const slug = item.replace('.html', '');
+      const raw = readFileSync(fullPath, 'utf-8');
+      const cleanContent = cleanNotionHtml(raw);
+
+      // Save file contents into the flattened dataset using a unique path-based identifier
+      const relativePathKey = relative(LOGS_DIR, fullPath).replace(/\\/g, '/').replace('.html', '');
+      logsFlatMap[relativePathKey] = cleanContent;
+      
+      currentLevelItems.files[slug] = cleanContent;
+    }
+  }
+
+  return currentLevelItems;
+}
+
+const rawTreeStructure = buildLogsTreeData(LOGS_DIR);
+
+// Convert standard hierarchical lookups safely back to a structure LogsTree can interpret without crashing
+// Note: We populate placeholder top tiers to prevent old legacy visual dependencies from throwing property errors
+const logsTree = rawTreeStructure?.folders || {};
+const logsJson = JSON.stringify(logsFlatMap);
 ---
 
 <Layout title="sow@sow:~$ ./log">
   <div class="blog-grid">
 
     <Panel title="dates.json">
-      <LogsTree logs={logsTree} />
+      <LogsTree logs={rawTreeStructure} />
     </Panel>
 
     <Panel title="day.log">
@@ -64,7 +78,6 @@ const logsJson = JSON.stringify(logsTree);
   </div>
 </Layout>
 
-<!-- Pass the full log data to the client-side interaction layer -->
 <script define:vars={{ logsJson }}>
   const logs = JSON.parse(logsJson);
 
@@ -93,14 +106,16 @@ const logsJson = JSON.stringify(logsTree);
     if (arrow) arrow.textContent = isOpen ? 'v' : '>';
   }
 
-  document.querySelectorAll('[data-folder]').forEach(folder => {
-    folder.addEventListener('click', e => {
-      e.stopPropagation();
-      playClick();
-      const key = folder.getAttribute('data-key');
-      const children = document.getElementById(key);
-      if (children) toggleFolder(folder, children);
-    });
+  // Use event delegation to handle clicks up to 10 levels seamlessly
+  document.body.addEventListener('click', e => {
+    const folder = e.target.closest('[data-folder]');
+    if (!folder) return;
+    
+    e.stopPropagation();
+    playClick();
+    const key = folder.getAttribute('data-key');
+    const children = document.getElementById(key);
+    if (children) toggleFolder(folder, children);
   });
 
   // seed open-state arrows for any pre-opened folders
@@ -114,13 +129,14 @@ const logsJson = JSON.stringify(logsTree);
   });
 
   // ── log viewer ────────────────────────────────────────────
-  function openLog(year, month, day, dayEl) {
+  function openLog(pathKey, dayEl) {
     document.querySelectorAll('.day-item').forEach(d => d.classList.remove('selected'));
     dayEl.classList.add('selected');
 
-    const entry = logs[year][month][day];
-    document.getElementById('log-cmd').textContent =
-      `./logs/${year}/${month}/${day}.log`;
+    const entry = logs[pathKey];
+    if (!entry) return;
+
+    document.getElementById('log-cmd').textContent = `./logs/${pathKey}.log`;
 
     const tagsHtml = (entry.tags?.length)
       ? `<p style="margin-top:12px">${entry.tags.map(t => `<span class="tag">#${t}</span>`).join('')}</p>`
@@ -130,12 +146,14 @@ const logsJson = JSON.stringify(logsTree);
       `<div class="log-content">${entry.content}${tagsHtml}</div>`;
   }
 
-  document.querySelectorAll('.day-item').forEach(dayEl => {
-    dayEl.addEventListener('click', e => {
-      e.stopPropagation();
-      playClick();
-      openLog(dayEl.dataset.year, dayEl.dataset.month, dayEl.dataset.day, dayEl);
-    });
+  document.body.addEventListener('click', e => {
+    const dayEl = e.target.closest('.day-item');
+    if (!dayEl) return;
+
+    e.stopPropagation();
+    playClick();
+    // Read the explicit pathKey generated directly by the recursive tree loops
+    openLog(dayEl.dataset.pathkey, dayEl);
   });
 </script>
 

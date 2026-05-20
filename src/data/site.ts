@@ -13,7 +13,7 @@ export const about = {
 	age: '18y',
 	location: 'Brazil',
 	email: 'sowisgone@gmail.com',
-	description: 'Been making small projects since 2019, participating in many projects. I\'ve worked as a scriptwritter and RPG master for a decade now. Currently, my main focus is working on my future game, SKULLDYE, and doing some stuff in Minecraft. Currently learning Blender, FLstudio and Godot. Feel welcome to email me or send me a message on Discord asking anything. In case you wanna collab with me on something, contact me over Discord for a quicker response!'
+	description: 'Been making small projects since 2019, participating in many projects. I\'ve worked as a scriptwritter and RPG master for a decade now. Currently, my main focus is working on my future game, SKULLDYE, and doing some stuff in Minecraft. Feel welcome to email me or send me a message on Discord asking anything. If the topic comes to be collabing on a project, send me an email on it!'
 };
 
 export const posts = [{ label: 'blog', href: '/blog' }];
@@ -38,3 +38,27 @@ export const blogDayLog = {
 	content: 'TODO: blog post content will go here.',
 };
 
+// ============================================================================
+// SYSTEM LOGS TREE TYPE & RECURSIVE SORTING
+// ============================================================================
+
+export interface LogItem {
+  name: string;
+  type: 'folder' | 'file';
+  urlPath?: string;
+  children: LogItem[];
+}
+
+export function sortLogItems(items: LogItem[]): LogItem[] {
+  return [...items]
+    .sort((a, b) => {
+      // Keep folders grouped on top of loose files
+      if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+      // Natural sorting: 0-9 comes before a-z natively
+      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    })
+    .map(item => ({
+      ...item,
+      children: sortLogItems(item.children)
+    }));
+}

@@ -66,7 +66,7 @@
 
   :global(.log-content ul)   { list-style: none; margin: 6px 0 10px; }
   :global(.log-content ul li) { padding: 1px 0; color: #ccc; }
-  :global(.log-content ul li::before) { content: '> '; color: var(--green); }
+  :global(.log-content ul li::before) { content: '~ '; color: var(--green); }
 
   :global(.log-content ol)   { list-style: none; counter-reset: ol; margin: 6px 0 10px; }
   :global(.log-content ol li) { counter-increment: ol; padding: 1px 0; color: #ccc; }
@@ -131,6 +131,69 @@
     border-bottom: 1px solid #181818;
     padding: 4px 8px;
     color: #bbb;
+  }
+
+  /* ── dropdowns ───────────────────────────────────────── */
+  :global(.log-content details.log-toggle) {
+    border-left: 2px solid #2a2a2a;
+    margin: 6px 0;
+    padding-left: 10px;
+  }
+
+  :global(.log-content details.log-toggle[open]) {
+    border-left-color: var(--dim-green);
+  }
+
+  :global(.log-content summary.log-toggle-label) {
+    cursor: pointer;
+    color: var(--pink);
+    font-size: 13px;
+    /* list-style + display:flex together kill the native marker on all browsers */
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+    user-select: none;
+  }
+
+  /* Belt AND suspenders — kill the native marker every way possible */
+  :global(.log-content summary.log-toggle-label::-webkit-details-marker) { display: none; }
+  :global(.log-content summary.log-toggle-label::marker) { content: ''; font-size: 0; }
+
+  /* Our own arrow — the only > that should appear */
+  :global(.log-content summary.log-toggle-label::before) {
+    content: '>';
+    color: var(--dim-green);
+    font-family: monospace;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  :global(.log-content details.log-toggle[open] > summary.log-toggle-label::before) {
+    content: 'v';
+  }
+
+  :global(.log-content summary.log-toggle-label:hover) {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  :global(.log-content details.log-toggle > *:not(summary)) {
+    margin-top: 6px;
+    color: #aaa;
+  }
+
+  /* ── equations (KaTeX) ───────────────────────────────── */
+:global(.log-content .log-equation) {
+  margin: 12px 0;
+  color: #ccc;
+}
+
+
+  :global(.log-content .log-equation .katex) {
+    color: #ccc;
+    font-size: 1.4em;
   }
 
   :global(.log-meta) { font-size: 11px; color: #444; margin-bottom: 12px; }
