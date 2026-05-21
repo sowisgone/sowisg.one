@@ -24,6 +24,8 @@ function applyPresence(presence: LanyardPresence) {
   const activityLabel = document.getElementById('activity-label');
   const spotifyMarquee = document.getElementById('spotify-marquee') as HTMLElement | null;
   const spotifyText = document.getElementById('spotify-text');
+  const discordDivider = document.querySelector('.discord-divider') as HTMLElement | null;
+  const activityBlock = document.querySelector('.activity-block') as HTMLElement | null;
 
   // PFP
   setPfpSource(getAvatarUrl(presence.discord_user));
@@ -73,7 +75,19 @@ function applyPresence(presence: LanyardPresence) {
     return;
   }
 
-  // 4. Idling
+  // 4. Idling — hide entirely when offline (invisible)
+  if (presence.discord_status === 'offline') {
+    activityLabel.innerHTML = '';
+    activityLabel.style.display = 'none';
+    if (discordDivider) discordDivider.style.display = 'none';
+    if (activityBlock) activityBlock.style.display = 'none';
+    if (spotifyMarquee) spotifyMarquee.style.display = 'none';
+    return;
+  }
+  // Restore visibility in case it was previously hidden
+  activityLabel.style.display = '';
+  if (discordDivider) discordDivider.style.display = '';
+  if (activityBlock) activityBlock.style.display = '';
   activityLabel.innerHTML = 'idling<span class="dots-anim"></span>';
   if (spotifyMarquee) spotifyMarquee.style.display = 'none';
 }

@@ -18,6 +18,7 @@ const statusColor = presence
 	? statusColors[presence.discord_status]
 	: statusColors.offline;
 const avatarUrl = presence ? getAvatarUrl(presence.discord_user) : null;
+const isOffline = !presence || presence.discord_status === 'offline';
 ---
 
 <Panel title="image.png">
@@ -48,9 +49,9 @@ const avatarUrl = presence ? getAvatarUrl(presence.discord_user) : null;
 				<span id="discord-username" class="discord-name">@sowisgone</span>
 				<div class="discord-sub">on Discord</div>
 			</div>
-			<span class="discord-divider">|</span>
-			<span class="activity-block">
-				<span id="activity-label" class="activity-label">idling<span class="dots-anim"></span></span>
+			<span class="discord-divider" style={isOffline ? 'display:none' : ''}>|</span>
+			<span class="activity-block" style={isOffline ? 'display:none' : ''}>
+				<span id="activity-label" class="activity-label">{isOffline ? '' : 'idling'}{!isOffline && <span class="dots-anim"></span>}</span>
 				<span id="spotify-marquee" class="spotify-marquee" style="display:none">
 					<span id="spotify-text"></span>
 				</span>
